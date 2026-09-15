@@ -4,8 +4,7 @@ import xgboost as xgb
 
 print("Training model to populate December predictions...")
 # 1. Load training data
-train_df = pd.read_csv("data/train-test-cleaned.csv")
-train_df = train_df.dropna(subset=["weight", "market_index"])
+train_df = pd.read_csv("data/train-test-engineered.csv")
 
 # Feature engineering for training
 train_df['date'] = pd.to_datetime(train_df['date'])

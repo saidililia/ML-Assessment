@@ -7,29 +7,11 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.preprocessing import LabelEncoder
 
-# 1. Load data and apply cleaning
-print("Loading cleaned data...")
-df = pd.read_csv("data/train-test-cleaned.csv")
+# 1. Load data after cleaning and feature engineering
+df = pd.read_csv("data/train-test-engineered.csv")
+print("Loading processed data...")
 
-# 2. Apply Feature Engineering
-print("Engineering features...")
-df['date'] = pd.to_datetime(df['date'])
-df['month'] = df['date'].dt.month
-df['day_of_week'] = df['date'].dt.dayofweek
-df['is_weekend'] = df['day_of_week'].isin([5, 6]).astype(int)
-df['weight_per_mile'] = df['weight'] / df['distance'].replace(0, np.nan)
-df['market_distance_interaction'] = df['market_index'] * df['distance']
-df['lane'] = df['pickup'].astype(str) + " -> " + df['delivery'].astype(str)
-
-# Drop rows with any remaining NaNs from division
-# Encode lane strings into numeric IDs so the model can read them
-le = LabelEncoder()
-df['lane_encoded'] = le.fit_transform(df['lane'])
-
-# Drop rows with any remaining NaNs from division
-df = df.dropna()
-
-# 3. Define Features (X) and Target (y)
+# 2. Define Features (X) and Target (y)
 # Drop raw string/date columns, including original 'pickup', 'delivery', and text 'lane'
 drop_cols = ['load_id', 'pickup', 'delivery', 'lane', 'date', 'posted_rate']
 X = df.drop(columns=drop_cols)
@@ -39,10 +21,10 @@ X = pd.get_dummies(X, columns=['equipment'], drop_first=True)
 
 y = df['posted_rate']
 
-# 4. Train/Test Split (80% train, 20% test)
+# 3. Train/Test Split (80% train, 20% test)
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# 5. Train Baseline Model
+# 4. Train Baseline Model
 print("Training Random Forest Regressor...")
 model = RandomForestRegressor(n_estimators=100, random_state=42, n_jobs=-1)
 model.fit(X_train, y_train)

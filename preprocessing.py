@@ -35,9 +35,5 @@ print("Final Cleaned Shape:", df.shape)
 print("Missing values after cleaning:\n", df.isna().sum())
 
 
-
-# Feature Engineering. 
-
-
 # Save the cleaned dataset for your modeling workflow
 df.to_csv("data/train-test-cleaned.csv", index=False)
