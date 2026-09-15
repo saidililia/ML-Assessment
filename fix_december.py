@@ -3,7 +3,7 @@ import numpy as np
 import xgboost as xgb
 
 print("Training model to populate December predictions...")
-# 1. Load training data
+# 1. Load training data and train model
 train_df = pd.read_csv("data/train-test-cleaned.csv")
 train_df = train_df.dropna(subset=["weight", "market_index"])
 
@@ -40,30 +40,35 @@ model = xgb.XGBRegressor(
 )
 model.fit(X_train, y_train)
 
-# 2. Load December chart inputs
+# 2. Load December chart inputs safely and force-strip any unwanted extra columns
 dec_df = pd.read_csv("data/december-chart-inputs.csv")
+expected_original_cols = ['pickup', 'delivery', 'distance', 'equipment', 'weight', 'date', 'predicted_rate']
 
-# Apply identical feature engineering
-dec_df['date'] = pd.to_datetime(dec_df['date'])
-dec_df['month'] = dec_df['date'].dt.month
-dec_df['day_of_week'] = dec_df['date'].dt.dayofweek
-dec_df['is_weekend'] = dec_df['day_of_week'].isin([5, 6]).astype(int)
-dec_df['weight_per_mile'] = dec_df['weight'] / dec_df['distance'].replace(0, np.nan)
-dec_df['lane'] = dec_df['pickup'].astype(str) + " -> " + dec_df['delivery'].astype(str)
+# Keep only the original columns that actually exist in the file
+existing_originals = [col for col in expected_original_cols if col in dec_df.columns]
+dec_df = dec_df[existing_originals]
 
-# Handle unseen lanes/equipment in December data
-dec_df.loc[~dec_df['lane'].astype(str).isin(train_lanes), 'lane'] = 'Unknown'
-dec_df.loc[~dec_df['equipment'].astype(str).isin(train_equip), 'equipment'] = 'Unknown'
+# Create a temporary copy to engineer features for prediction purposes only
+dec_features = dec_df.copy()
+dec_features['date'] = pd.to_datetime(dec_features['date'])
+dec_features['month'] = dec_features['date'].dt.month
+dec_features['day_of_week'] = dec_features['date'].dt.dayofweek
+dec_features['is_weekend'] = dec_features['day_of_week'].isin([5, 6]).astype(int)
+dec_features['weight_per_mile'] = dec_features['weight'] / dec_features['distance'].replace(0, np.nan)
+dec_features['lane'] = dec_features['pickup'].astype(str) + " -> " + dec_features['delivery'].astype(str)
 
-dec_df['lane'] = pd.Categorical(dec_df['lane'].astype(str), categories=list(train_lanes))
-dec_df['equipment'] = pd.Categorical(dec_df['equipment'].astype(str), categories=list(train_equip))
+# Handle unseen categories
+dec_features.loc[~dec_features['lane'].astype(str).isin(train_lanes), 'lane'] = 'Unknown'
+dec_features.loc[~dec_features['equipment'].astype(str).isin(train_equip), 'equipment'] = 'Unknown'
 
-# Drop non-feature columns if present
-dec_features_to_drop = [col for col in ['pickup', 'delivery', 'date', 'predicted_rate'] if col in dec_df.columns]
-X_dec = dec_df.drop(columns=dec_features_to_drop)
+dec_features['lane'] = pd.Categorical(dec_features['lane'].astype(str), categories=list(train_lanes))
+dec_features['equipment'] = pd.Categorical(dec_features['equipment'].astype(str), categories=list(train_equip))
 
-# --- INTELLIGENT COLUMN ALIGNMENT & IMPUTATION ---
-# If any column expected by the model is missing from dec_df, fill it using train medians or defaults
+# Drop non-feature columns
+dec_features_to_drop = [col for col in ['pickup', 'delivery', 'date', 'predicted_rate'] if col in dec_features.columns]
+X_dec = dec_features.drop(columns=dec_features_to_drop)
+
+# Impute missing columns if any are absent
 for col in X_train.columns:
     if col not in X_dec.columns:
         if col in train_df.columns and pd.api.types.is_numeric_dtype(train_df[col]):
@@ -71,13 +76,15 @@ for col in X_train.columns:
         else:
             X_dec[col] = 0
 
-# Ensure exact column order match with X_train
 X_dec = X_dec[X_train.columns]
 
-# 3. Predict and update December file
+# 3. Predict rates
 dec_predictions = model.predict(X_dec)
-dec_df['predicted_rate'] = dec_predictions
 
-# Save back to the exact path expected by score.py
+# 4. Update predicted_rate and ensure strict 7-column order
+dec_df['predicted_rate'] = dec_predictions
+dec_df = dec_df[['pickup', 'delivery', 'distance', 'equipment', 'weight', 'date', 'predicted_rate']]
+
+# Save back cleanly
 dec_df.to_csv("data/december-chart-inputs.csv", index=False)
-print("Success! 'data/december-chart-inputs.csv' updated with valid predicted rates.")
+print("Success! 'data/december-chart-inputs.csv' updated with strict 7-column schema.")
