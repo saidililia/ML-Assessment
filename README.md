@@ -1,25 +1,54 @@
-# Freight Rate Prediction Challenge
+# Freight Rate Prediction Challenge - Run Instructions
 
-See `Freight_Rate_ML_Assessment.pdf` for the assessment instructions.
+## Quick Start & Setup
 
-## What to do
-
-1. Train and validate your model using `data/train_test.csv`.
-2. Predict every load in `data/validation.csv`. Each load has a unique `load_id`.
-3. Fill the matching `predicted_rate` values in `data/validation_predictions_template.csv` and save it as `validation_predictions.csv`.
-4. Predict every row in `data/december_chart_inputs.csv` by filling its `predicted_rate` column.
-5. Install the scorer requirements and run:
-
+### 1. Clone the Repository
 ```bash
-python -m pip install -r requirements.txt
-python score.py --predictions validation_predictions.csv --december-predictions data/december_chart_inputs.csv
+git clone <your-repository-url>
+cd <repository-folder-name>
+```
+### 2. Create and Activate a Virtual Environment
+macOS / Linux:
+```bash
+python3 -m venv venv
+source venv/bin/activate
 ```
 
-The scorer validates both files and creates `scorer_results/candidate_december.png`.
+Windows (Command Prompt / PowerShell):
+```bash
+python -m venv venv
+.venv\Scripts\Activate.ps1
+```
 
-## Submit
+### 3. Install Dependencies
+```bash
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+```
 
-- GitHub repository containing your code, dependencies, and run instructions
-- `validation_predictions.csv`
-- PDF or DOCX report containing your validation, data split approach and `candidate_december.png`
-- 2-3 minute Loom link
+## Pipeline Execution
+Run the scripts in the following sequential order to process data, train, and generate predictions:
+
+#### 1. Dataset Cleaning & Exploration:
+```bash
+python preprocessing.py
+```
+
+#### 2. Feature Engineering:
+```bash
+python feature_engineering.py
+```
+
+#### 3. Model Evaluation & Feature Importance:
+```bash
+python model.py
+```
+#### 4. Validation Predictions:
+```bash
+python validation.py
+```
+
+#### 5. December Predictions:
+```bash
+python predict_december.py
+```
